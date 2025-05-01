@@ -2,61 +2,89 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StoreTodoRequest;
+use App\Http\Requests\UpdateTodoRequest;
+use App\Http\Resources\TodoResource;
 use App\Models\Todo;
 use App\Models\User;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class TodoController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
+    public function index(): JsonResponse
     {
-        $todos = Todo::all();
-        // dd($todos);
-        return response()->json($todos);
+        try {
+            $todos = Todo::all();
+            return response()->json([
+                'success' => true,
+                'data' => TodoResource::collection($todos)
+            ], 200);
+        } catch (\Exception $e) {
+            return $this->errorResponse($e);
+        }
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
+    public function store(StoreTodoRequest $request): JsonResponse
     {
-        // dd($request->all());
-        $request->validate(['title' => 'required|string|max:255']);
-        $todo = Todo::create(['title' => $request->title]);
-        return response()->json($todo);
+        try {
+            $todo = Todo::create($request->validated());
+            return response()->json([
+                'success' => true,
+                'data' => new TodoResource($todo)
+            ], 201);
+        } catch (\Exception $e) {
+            return $this->errorResponse($e);
+        }
     }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(string $id)
+    public function update(UpdateTodoRequest $request, string $id): JsonResponse
     {
-        //
+        try {
+            $todo = Todo::findOrFail($id);
+            $validatedData = $request->validated();
+            $todo->update($validatedData);
+
+            return response()->json([
+                'success' => true,
+                'data' => new TodoResource($todo)
+            ], 200);
+        } catch (ModelNotFoundException $e) {
+            return $this->errorResponse($e, 404);
+        } catch (ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            return $this->errorResponse($e);
+        }
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, string $id)
+
+    public function destroy(string $id): JsonResponse
     {
-        // dd($request->all(), $id);
-        $todo = Todo::findOrFail($id);
-        // dd($todo);
-        $todo->update($request->all());
-        return response()->json($todo);
+        try {
+            $todo = Todo::findOrFail($id);
+            $todo->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Todo deleted successfully'
+            ]);
+        } catch (\Exception $e) {
+            return $this->errorResponse($e);
+        }
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(string $id)
+    private function errorResponse(\Throwable $e): JsonResponse
     {
-        // dd($id);
-        $todo = Todo::findOrFail($id);
-        $todo->delete();
-        return response()->json(['message' => 'Todo deleted']);
+        return response()->json([
+            'success' => false,
+            'message' => $e->getMessage()
+        ], 500);
     }
 }

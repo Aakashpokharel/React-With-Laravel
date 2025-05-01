@@ -1,5 +1,3 @@
-// src/components/services/apiWrapper.js
-
 const API_URL = "http://127.0.0.1:8000/api";
 
 export const apiWrapper = async (endpoint, method = 'GET', body = null) => {
@@ -7,14 +5,16 @@ export const apiWrapper = async (endpoint, method = 'GET', body = null) => {
         method,
         headers: {
             'Content-Type': 'application/json',
+
         },
+
     };
     if (body) {
         config.body = JSON.stringify(body);
     }
 
     try {
-        const signal = new AbortController()
+        // const signal = new AbortController()
         const response = await fetch(`${API_URL}/${endpoint}`, config);
         if (!response.ok) {
             const errorMessage = await response.text();
@@ -27,7 +27,6 @@ export const apiWrapper = async (endpoint, method = 'GET', body = null) => {
     }
 };
 
-// src/components/services/api.js
 
 // Fetch all data
 export const fetchData = async (endpoint) => {
